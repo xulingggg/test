@@ -1,0 +1,60 @@
+MongoClient.connect('mongodb://localhost/adobe-test', (err, client) => {
+
+    if (err) throw err;
+    let db = client.db('adobe-test');
+
+    db.collection("test1").find({}).toArray( (err, result) => {
+        if (err) throw err;
+        result.map((item) => {
+            const histAppLaunch = [];
+            Object.entries(item.productsUsage.hist.appLaunch).map(
+                ([app_key, value]) => {
+                    histAppLaunch.push(app_key)
+                    const lcount = Object.entries(value).filter(
+                        ([key, value]) => {
+                            const loginDate = key.split("-");
+                            const loginDateInMillisecond = Date.UTC(loginDate[0], loginDate[1]-1, loginDate[2]);
+                            let lessThanNinety = (today-loginDateInMillisecond) <= ninetyDays;
+                            if (!lessThanNinety){
+                                let datekey = "productsUsage.hist.appLaunch." + app_key + "." + key;
+                                let unsetFiled = {[datekey]: 1};
+                                //console.log(unsetFiled);
+                                //delete the data more than 90 days
+                                db.collection("test1").updateOne({"_id":item._id}, {$unset: unsetFiled})
+                                .then(
+                                    //res => console.log(`History of ${key} deleted`),
+                                    //err => console.error(`Something went wrong: ${err}`)
+                                )
+                            }
+                            return lessThanNinety
+                        }
+                    ).reduce(
+                        (accumulator, currentValue) => { return accumulator + currentValue[1] },
+                        0
+                    )
+                   
+                    // update the launchCount value
+                    db.collection("test1").updateOne({"_id":item._id}, {$set: updateValue})
+                    .then(
+                        res => console.log(`Launch count of ${app_key} updated to ${lcount}`),
+                        err => console.error(`Something went wrong: ${err}`)
+                    );
+                }
+            )
+            Object.entries(item.productsUsage.appLaunch).map(
+                ([app_key, value]) => {
+                    if(!histAppLaunch.includes(app_key)){
+                        let appKey = "productsUsage.appLaunch." + app_key + ".launchCount";
+                        let updateValue = {[appKey]: 0};
+                        db.collection("test1").updateOne({"_id":item._id}, {$set: updateValue})
+                        .then(
+                            res => console.log(`Launch count of ${app_key} is 0`),
+                            err => console.error(`Something went wrong: ${err}`)
+                    );
+                    }
+                }
+            )
+        })
+        client.close();
+    });
+});
