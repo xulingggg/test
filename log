@@ -1,0 +1,15 @@
+let fs = require('fs')
+
+function create_logs() {
+  let files = fs.readdirSync('./logs')
+
+  if (files.length < 1) {
+    fs.writeFile('./logs/log0001.log', '', (err) => err ? console.log(err) : {}
+  )} else {
+    last_log = files[files.length - 1]
+    last_log_num = last_log.split(".")[0].replace( /^\D+/g, '')
+    new_log_num = String(parseInt(last_log_num) + 1).padStart(4, '0')
+    new_log_name = "log" + new_log_num + ".log"
+    fs.writeFile('./logs/' + new_log_name, '', (err) => err ? console.log(err) : {})
+  }
+}
